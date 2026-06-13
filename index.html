@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>アトリエわたぐも｜原価計算ツール</title>
+  <style>
+    :root {
+      --main: #6b8e6b;
+      --main-dark: #4f704f;
+      --bg: #f7f5f0;
+      --card: #ffffff;
+      --line: #e3ded3;
+      --text: #333;
+      --muted: #777;
+      --accent: #b5651d;
+      --danger: #b94a48;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 16px;
+    }
+    header {
+      background: var(--main);
+      color: #fff;
+      padding: 16px;
+      text-align: center;
+    }
+    header h1 { margin: 0; font-size: 20px; }
+    header p { margin: 4px 0 0; font-size: 13px; opacity: 0.9; }
+    .wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 17px;
+      color: var(--main-dark);
+      border-bottom: 2px solid var(--line);
+      padding-bottom: 8px;
+    }
+    label {
+      display: block;
+      margin-bottom: 12px;
+      font-size: 15px;
+    }
+    label .name { display: block; margin-bottom: 4px; color: var(--muted); }
+    input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fcfbf8;
+    }
+    input:focus { outline: 2px solid var(--main); border-color: var(--main); }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .row label { flex: 1; min-width: 130px; }
+    .results {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .result-item {
+      background: #f3f6f3;
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .result-item .r-name { font-size: 13px; color: var(--muted); }
+    .result-item .r-val { font-size: 19px; font-weight: bold; color: var(--main-dark); }
+    .result-item.highlight { background: #fbf2e6; }
+    .result-item.highlight .r-val { color: var(--accent); }
+    .result-item.loss .r-val { color: var(--danger); }
+    .btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+    button {
+      flex: 1;
+      min-width: 120px;
+      padding: 14px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      color: #fff;
+      background: var(--main);
+    }
+    button:active { opacity: 0.85; }
+    button.sub { background: #8a8a8a; }
+    button.export { background: var(--accent); }
+    button.danger { background: var(--danger); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 8px 6px;
+      text-align: right;
+      border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+    }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: var(--muted); font-weight: normal; font-size: 12px; }
+    .saved-list { overflow-x: auto; }
+    .del-btn {
+      background: var(--danger);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 13px;
+      cursor: pointer;
+      min-width: auto;
+      flex: none;
+    }
+    .empty { color: var(--muted); text-align: center; padding: 16px; }
+    footer { text-align: center; color: var(--muted); font-size: 12px; padding: 16px; }
+    @media (max-width: 480px) {
+      .results { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>アトリエわたぐも</h1>
+    <p>原価計算ツール</p>
+  </header>
+
+  <div class="wrap">
+    <!-- 入力 -->
+    <div class="card">
+      <h2>商品の入力</h2>
+      <label>
+        <span class="name">商品名</span>
+        <input type="text" id="name" placeholder="例：リネンワンピース">
+      </label>
+      <div class="row">
+        <label>
+          <span class="name">販売価格（円）</span>
+          <input type="number" id="price" min="0" placeholder="0">
+        </label>
+        <label>
+          <span class="name">販売手数料率（％）</span>
+          <input type="number" id="feeRate" min="0" step="0.1" placeholder="0">
+        </label>
+      </div>
+      <div class="row">
+        <label>
+          <span class="name">生地単価（円/m）</span>
+          <input type="number" id="fabricUnit" min="0" placeholder="0">
+        </label>
+        <label>
+          <span class="name">使用ｍ数（m）</span>
+          <input type="number" id="fabricM" min="0" step="0.1" placeholder="0">
+        </label>
+      </div>
+      <div class="row">
+        <label>
+          <span class="name">副資材費（円）</span>
+          <input type="number" id="parts" min="0" placeholder="0">
+        </label>
+        <label>
+          <span class="name">梱包費（円）</span>
+          <input type="number" id="packing" min="0" placeholder="0">
+        </label>
+      </div>
+      <div class="row">
+        <label>
+          <span class="name">送料（円）</span>
+          <input type="number" id="shipping" min="0" placeholder="0">
+        </label>
+        <label>
+          <span class="name">制作時間（分）</span>
+          <input type="number" id="minutes" min="0" placeholder="0">
+        </label>
+      </div>
+    </div>
+
+    <!-- 計算結果 -->
+    <div class="card">
+      <h2>計算結果</h2>
+      <div class="results">
+        <div class="result-item">
+          <div class="r-name">材料費合計</div>
+          <div class="r-val" id="rMaterial">0 円</div>
+        </div>
+        <div class="result-item">
+          <div class="r-name">販売手数料</div>
+          <div class="r-val" id="rFee">0 円</div>
+        </div>
+        <div class="result-item highlight">
+          <div class="r-name">利益</div>
+          <div class="r-val" id="rProfit">0 円</div>
+        </div>
+        <div class="result-item highlight">
+          <div class="r-name">利益率</div>
+          <div class="r-val" id="rRate">0 %</div>
+        </div>
+        <div class="result-item highlight">
+          <div class="r-name">時給換算</div>
+          <div class="r-val" id="rHourly">0 円</div>
+        </div>
+      </div>
+      <div class="btns" style="margin-top:14px;">
+        <button id="saveBtn">この商品を保存</button>
+        <button class="sub" id="clearBtn">入力をクリア</button>
+      </div>
+    </div>
+
+    <!-- 保存一覧 -->
+    <div class="card">
+      <h2>保存した商品</h2>
+      <div class="saved-list">
+        <table id="savedTable">
+          <thead>
+            <tr>
+              <th>商品名</th>
+              <th>販売価格</th>
+              <th>材料費</th>
+              <th>利益</th>
+              <th>利益率</th>
+              <th>時給</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="savedBody"></tbody>
+        </table>
+        <div class="empty" id="emptyMsg">まだ保存された商品はありません。</div>
+      </div>
+      <div class="btns" style="margin-top:14px;">
+        <button class="export" id="csvBtn">CSVで書き出し</button>
+        <button class="danger" id="deleteAllBtn">すべて削除</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>アトリエわたぐも 業務管理ツール</footer>
+
+  <script>
+    var STORAGE_KEY = "watagumo_cost_items";
+
+    // 入力フィールド
+    var fields = ["name","price","feeRate","fabricUnit","fabricM","parts","packing","shipping","minutes"];
+
+    function num(id) {
+      var v = parseFloat(document.getElementById(id).value);
+      return isNaN(v) ? 0 : v;
+    }
+
+    function yen(n) {
+      return Math.round(n).toLocaleString("ja-JP") + " 円";
+    }
+
+    // 計算
+    function calc() {
+      var price = num("price");
+      var feeRate = num("feeRate");
+      var material = num("fabricUnit") * num("fabricM") + num("parts") + num("packing") + num("shipping");
+      var fee = price * feeRate / 100;
+      var profit = price - material - fee;
+      var rate = price > 0 ? (profit / price * 100) : 0;
+      var minutes = num("minutes");
+      var hourly = minutes > 0 ? (profit / minutes * 60) : 0;
+      return {
+        material: material,
+        fee: fee,
+        profit: profit,
+        rate: rate,
+        hourly: hourly,
+        minutes: minutes
+      };
+    }
+
+    function render() {
+      var r = calc();
+      document.getElementById("rMaterial").textContent = yen(r.material);
+      document.getElementById("rFee").textContent = yen(r.fee);
+      document.getElementById("rProfit").textContent = yen(r.profit);
+      document.getElementById("rRate").textContent = (Math.round(r.rate * 10) / 10) + " %";
+      document.getElementById("rHourly").textContent = r.minutes > 0 ? yen(r.hourly) : "— 円";
+
+      // 赤字のときは色を変える
+      var profitItem = document.getElementById("rProfit").parentElement;
+      var rateItem = document.getElementById("rRate").parentElement;
+      if (r.profit < 0) {
+        profitItem.classList.add("loss");
+        rateItem.classList.add("loss");
+      } else {
+        profitItem.classList.remove("loss");
+        rateItem.classList.remove("loss");
+      }
+    }
+
+    // localStorage
+    function loadItems() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveItems(items) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    }
+
+    function renderSaved() {
+      var items = loadItems();
+      var body = document.getElementById("savedBody");
+      var empty = document.getElementById("emptyMsg");
+      var table = document.getElementById("savedTable");
+      body.innerHTML = "";
+
+      if (items.length === 0) {
+        empty.style.display = "block";
+        table.style.display = "none";
+        return;
+      }
+      empty.style.display = "none";
+      table.style.display = "table";
+
+      items.forEach(function (it, idx) {
+        var tr = document.createElement("tr");
+        tr.innerHTML =
+          "<td>" + escapeHtml(it.name || "(名称なし)") + "</td>" +
+          "<td>" + Math.round(it.price).toLocaleString("ja-JP") + "</td>" +
+          "<td>" + Math.round(it.material).toLocaleString("ja-JP") + "</td>" +
+          "<td>" + Math.round(it.profit).toLocaleString("ja-JP") + "</td>" +
+          "<td>" + (Math.round(it.rate * 10) / 10) + "%</td>" +
+          "<td>" + (it.minutes > 0 ? Math.round(it.hourly).toLocaleString("ja-JP") : "—") + "</td>" +
+          "<td></td>";
+        var delTd = tr.lastChild;
+        var btn = document.createElement("button");
+        btn.className = "del-btn";
+        btn.textContent = "削除";
+        btn.onclick = function () { deleteItem(idx); };
+        delTd.appendChild(btn);
+        body.appendChild(tr);
+      });
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+
+    function saveCurrent() {
+      var name = document.getElementById("name").value.trim();
+      if (!name) {
+        alert("商品名を入力してください。");
+        return;
+      }
+      var r = calc();
+      var item = {
+        name: name,
+        price: num("price"),
+        feeRate: num("feeRate"),
+        fabricUnit: num("fabricUnit"),
+        fabricM: num("fabricM"),
+        parts: num("parts"),
+        packing: num("packing"),
+        shipping: num("shipping"),
+        minutes: r.minutes,
+        material: r.material,
+        fee: r.fee,
+        profit: r.profit,
+        rate: r.rate,
+        hourly: r.hourly,
+        savedAt: new Date().toISOString()
+      };
+      var items = loadItems();
+      items.push(item);
+      saveItems(items);
+      renderSaved();
+      alert("「" + name + "」を保存しました。");
+    }
+
+    function deleteItem(idx) {
+      var items = loadItems();
+      var name = items[idx] ? items[idx].name : "";
+      if (!confirm("「" + name + "」を削除しますか？")) return;
+      items.splice(idx, 1);
+      saveItems(items);
+      renderSaved();
+    }
+
+    function deleteAll() {
+      if (!confirm("保存した商品をすべて削除しますか？")) return;
+      saveItems([]);
+      renderSaved();
+    }
+
+    function clearInputs() {
+      fields.forEach(function (id) { document.getElementById(id).value = ""; });
+      render();
+    }
+
+    // CSV書き出し
+    function exportCsv() {
+      var items = loadItems();
+      if (items.length === 0) {
+        alert("保存された商品がありません。");
+        return;
+      }
+      var headers = ["商品名","販売価格","販売手数料率(%)","生地単価","使用m数","副資材費","梱包費","送料","制作時間(分)","材料費合計","販売手数料","利益","利益率(%)","時給換算"];
+      var rows = items.map(function (it) {
+        return [
+          it.name, it.price, it.feeRate, it.fabricUnit, it.fabricM,
+          it.parts, it.packing, it.shipping, it.minutes,
+          Math.round(it.material), Math.round(it.fee), Math.round(it.profit),
+          Math.round(it.rate * 10) / 10,
+          it.minutes > 0 ? Math.round(it.hourly) : ""
+        ].map(csvCell).join(",");
+      });
+      var csv = headers.map(csvCell).join(",") + "\r\n" + rows.join("\r\n");
+      // ExcelでもUTF-8が文字化けしないようBOMを付与
+      var bom = "﻿";
+      var blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8;" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      var d = new Date();
+      var stamp = d.getFullYear() + ("0"+(d.getMonth()+1)).slice(-2) + ("0"+d.getDate()).slice(-2);
+      a.href = url;
+      a.download = "watagumo_genka_" + stamp + ".csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function csvCell(v) {
+      var s = String(v == null ? "" : v);
+      if (/[",\r\n]/.test(s)) {
+        s = '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    }
+
+    // イベント登録
+    fields.forEach(function (id) {
+      document.getElementById(id).addEventListener("input", render);
+    });
+    document.getElementById("saveBtn").addEventListener("click", saveCurrent);
+    document.getElementById("clearBtn").addEventListener("click", clearInputs);
+    document.getElementById("csvBtn").addEventListener("click", exportCsv);
+    document.getElementById("deleteAllBtn").addEventListener("click", deleteAll);
+
+    // 初期表示
+    render();
+    renderSaved();
+  </script>
+</body>
+</html>
