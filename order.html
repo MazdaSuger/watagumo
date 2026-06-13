@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>アトリエわたぐも｜受注管理</title>
+  <style>
+    :root {
+      --main: #6b8e6b;
+      --main-dark: #4f704f;
+      --bg: #f7f5f0;
+      --card: #ffffff;
+      --line: #e3ded3;
+      --text: #333;
+      --muted: #777;
+      --accent: #b5651d;
+      --danger: #b94a48;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 16px;
+    }
+    header {
+      background: var(--main);
+      color: #fff;
+      padding: 16px;
+      text-align: center;
+    }
+    header h1 { margin: 0; font-size: 20px; }
+    header p { margin: 4px 0 0; font-size: 13px; opacity: 0.9; }
+    nav {
+      background: var(--main-dark);
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+    }
+    nav a {
+      color: #fff;
+      text-decoration: none;
+      padding: 10px 16px;
+      font-size: 14px;
+      opacity: 0.8;
+    }
+    nav a.active { opacity: 1; background: rgba(255,255,255,0.15); font-weight: bold; }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 16px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 17px;
+      color: var(--main-dark);
+      border-bottom: 2px solid var(--line);
+      padding-bottom: 8px;
+    }
+    label { display: block; margin-bottom: 12px; font-size: 15px; }
+    label .name { display: block; margin-bottom: 4px; color: var(--muted); }
+    input[type="text"], input[type="number"], input[type="date"], select, textarea {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fcfbf8;
+      font-family: inherit;
+    }
+    textarea { resize: vertical; min-height: 60px; }
+    input:focus, select:focus, textarea:focus { outline: 2px solid var(--main); border-color: var(--main); }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .row label { flex: 1; min-width: 140px; }
+    .btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+    button {
+      flex: 1; min-width: 120px; padding: 14px; font-size: 16px;
+      border: none; border-radius: 8px; cursor: pointer; color: #fff; background: var(--main);
+    }
+    button:active { opacity: 0.85; }
+    button.sub { background: #8a8a8a; }
+    button.export { background: var(--accent); }
+    button.danger { background: var(--danger); }
+    .filter-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+    .filter-row label { margin-bottom: 0; flex: 1; min-width: 160px; }
+    .orders { display: grid; gap: 12px; }
+    .order {
+      border: 1px solid var(--line);
+      border-left: 6px solid var(--main);
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: #fff;
+    }
+    .order.urgent { border-left-color: var(--danger); background: #fdf6f5; }
+    .order.done { border-left-color: #b9b9b9; opacity: 0.75; }
+    .order-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 6px; }
+    .order-head .o-no { font-size: 13px; color: var(--muted); }
+    .order-head .o-customer { font-size: 17px; font-weight: bold; }
+    .order-body { font-size: 14px; margin-top: 6px; color: #444; }
+    .order-body div { margin: 2px 0; }
+    .badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .badge { font-size: 12px; padding: 3px 9px; border-radius: 99px; background: #eef2ee; color: var(--main-dark); }
+    .badge.status { background: #e7eef7; color: #355e8c; }
+    .badge.pay-done { background: #e6f4ea; color: #2e7d4f; }
+    .badge.pay-unpaid { background: #fdeaea; color: #b94a48; }
+    .badge.ship-soon { background: #fbe9d6; color: #b5651d; font-weight: bold; }
+    .badge.ship-over { background: #f8d7da; color: #b94a48; font-weight: bold; }
+    .order-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .order-actions button { flex: none; min-width: auto; padding: 7px 14px; font-size: 13px; }
+    .empty { color: var(--muted); text-align: center; padding: 24px; }
+    footer { text-align: center; color: var(--muted); font-size: 12px; padding: 16px; }
+    .count { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>アトリエわたぐも</h1>
+    <p>受注管理</p>
+  </header>
+  <nav>
+    <a href="index.html">原価計算</a>
+    <a href="order.html" class="active">受注管理</a>
+  </nav>
+
+  <div class="wrap">
+    <!-- 入力フォーム -->
+    <div class="card">
+      <h2 id="formTitle">注文の入力</h2>
+      <div class="row">
+        <label>
+          <span class="name">注文番号</span>
+          <input type="text" id="orderNo" placeholder="例：2026-001">
+        </label>
+        <label>
+          <span class="name">注文日</span>
+          <input type="date" id="orderDate">
+        </label>
+      </div>
+      <div class="row">
+        <label>
+          <span class="name">顧客名</span>
+          <input type="text" id="customer" placeholder="例：山田 花子">
+        </label>
+        <label>
+          <span class="name">商品名</span>
+          <input type="text" id="product" placeholder="例：リネンワンピース">
+        </label>
+      </div>
+      <div class="row">
+        <label>
+          <span class="name">サイズ</span>
+          <input type="text" id="size" placeholder="例：M / フリー">
+        </label>
+        <label>
+          <span class="name">生地</span>
+          <input type="text" id="fabric" placeholder="例：生成りリネン">
+        </label>
+        <label>
+          <span class="name">価格（円）</span>
+          <input type="number" id="price" min="0" placeholder="0">
+        </label>
+      </div>
+      <div class="row">
+        <label>
+          <span class="name">支払い状況</span>
+          <select id="payStatus">
+            <option value="未入金">未入金</option>
+            <option value="一部入金">一部入金</option>
+            <option value="入金済み">入金済み</option>
+          </select>
+        </label>
+        <label>
+          <span class="name">制作ステータス</span>
+          <select id="status"></select>
+        </label>
+      </div>
+      <div class="row">
+        <label>
+          <span class="name">発送予定日</span>
+          <input type="date" id="shipPlan">
+        </label>
+        <label>
+          <span class="name">発送日</span>
+          <input type="date" id="shipDate">
+        </label>
+        <label>
+          <span class="name">追跡番号</span>
+          <input type="text" id="tracking" placeholder="例：1234-5678-9012">
+        </label>
+      </div>
+      <label>
+        <span class="name">備考</span>
+        <textarea id="memo" placeholder="採寸メモ、要望など"></textarea>
+      </label>
+      <div class="btns">
+        <button id="saveBtn">注文を登録</button>
+        <button class="sub" id="cancelBtn" style="display:none;">編集をやめる</button>
+        <button class="sub" id="clearBtn">入力をクリア</button>
+      </div>
+    </div>
+
+    <!-- 一覧 -->
+    <div class="card">
+      <h2>注文一覧（発送予定が近い順）</h2>
+      <div class="filter-row" style="margin-bottom:12px;">
+        <label>
+          <span class="name">キーワード検索</span>
+          <input type="text" id="search" placeholder="顧客名・商品名・注文番号">
+        </label>
+        <label>
+          <span class="name">ステータスで絞り込み</span>
+          <select id="filterStatus"><option value="">すべて</option></select>
+        </label>
+      </div>
+      <div class="count" id="count"></div>
+      <div class="orders" id="orderList"></div>
+      <div class="empty" id="emptyMsg">まだ登録された注文はありません。</div>
+      <div class="btns" style="margin-top:14px;">
+        <button class="export" id="csvBtn">CSVで書き出し</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>アトリエわたぐも 業務管理ツール ／ データは端末内にのみ保存されます</footer>
+
+  <script>
+    var STORAGE_KEY = "watagumo_orders";
+    var STATUSES = ["受注","入金確認","生地準備","裁断","縫製","仕上げ","梱包","発送済み","完了"];
+
+    var fields = ["orderNo","orderDate","customer","product","size","fabric","price","payStatus","status","shipPlan","shipDate","tracking","memo"];
+    var editId = null;
+
+    function $(id){ return document.getElementById(id); }
+    function val(id){ return $(id).value.trim(); }
+
+    function escapeHtml(s){
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+        return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+      });
+    }
+
+    // セレクト初期化
+    (function initSelects(){
+      var sel = $("status");
+      var filt = $("filterStatus");
+      STATUSES.forEach(function(s){
+        var o = document.createElement("option"); o.value = s; o.textContent = s; sel.appendChild(o);
+        var o2 = document.createElement("option"); o2.value = s; o2.textContent = s; filt.appendChild(o2);
+      });
+    })();
+
+    // 今日の日付を初期値に
+    function todayStr(){
+      var d = new Date();
+      return d.getFullYear() + "-" + ("0"+(d.getMonth()+1)).slice(-2) + "-" + ("0"+d.getDate()).slice(-2);
+    }
+
+    // localStorage
+    function loadOrders(){
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+      catch(e){ return []; }
+    }
+    function saveOrders(list){ localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
+
+    // 発送予定日が近い順に並び替え（予定日なしは末尾、完了は最後）
+    function sortOrders(list){
+      return list.slice().sort(function(a,b){
+        var aDone = a.status === "完了";
+        var bDone = b.status === "完了";
+        if (aDone !== bDone) return aDone ? 1 : -1;
+        var ap = a.shipPlan || "";
+        var bp = b.shipPlan || "";
+        if (!ap && !bp) return 0;
+        if (!ap) return 1;
+        if (!bp) return -1;
+        return ap < bp ? -1 : (ap > bp ? 1 : 0);
+      });
+    }
+
+    // 発送予定日までの日数
+    function daysUntil(dateStr){
+      if (!dateStr) return null;
+      var t = new Date(todayStr()); var d = new Date(dateStr);
+      return Math.round((d - t) / 86400000);
+    }
+
+    function payClass(p){
+      if (p === "入金済み") return "pay-done";
+      if (p === "未入金") return "pay-unpaid";
+      return "";
+    }
+
+    function render(){
+      var list = loadOrders();
+      var kw = val("search").toLowerCase();
+      var fs = $("filterStatus").value;
+
+      var filtered = list.filter(function(o){
+        if (fs && o.status !== fs) return false;
+        if (kw){
+          var hay = (o.customer + " " + o.product + " " + o.orderNo).toLowerCase();
+          if (hay.indexOf(kw) === -1) return false;
+        }
+        return true;
+      });
+      filtered = sortOrders(filtered);
+
+      var box = $("orderList");
+      var empty = $("emptyMsg");
+      box.innerHTML = "";
+
+      $("count").textContent = "全 " + list.length + " 件" + (filtered.length !== list.length ? "（表示 " + filtered.length + " 件）" : "");
+
+      if (filtered.length === 0){
+        empty.textContent = list.length === 0 ? "まだ登録された注文はありません。" : "条件に合う注文はありません。";
+        empty.style.display = "block";
+        return;
+      }
+      empty.style.display = "none";
+
+      filtered.forEach(function(o){
+        var d = daysUntil(o.shipPlan);
+        var shipped = o.status === "発送済み" || o.status === "完了" || o.shipDate;
+        var card = document.createElement("div");
+        card.className = "order";
+        if (o.status === "完了") card.className += " done";
+        else if (!shipped && d !== null && d <= 3) card.className += " urgent";
+
+        var shipBadge = "";
+        if (!shipped && d !== null){
+          if (d < 0) shipBadge = '<span class="badge ship-over">発送予定 ' + (-d) + '日超過</span>';
+          else if (d === 0) shipBadge = '<span class="badge ship-soon">発送予定 本日</span>';
+          else if (d <= 3) shipBadge = '<span class="badge ship-soon">発送まであと' + d + '日</span>';
+        }
+
+        var lines = [];
+        lines.push('<div>商品：' + escapeHtml(o.product || "—") + (o.size ? '（' + escapeHtml(o.size) + '）' : '') + '</div>');
+        if (o.fabric) lines.push('<div>生地：' + escapeHtml(o.fabric) + '</div>');
+        if (o.price) lines.push('<div>価格：' + Number(o.price).toLocaleString("ja-JP") + ' 円</div>');
+        lines.push('<div>注文日：' + escapeHtml(o.orderDate || "—") + ' ／ 発送予定：' + escapeHtml(o.shipPlan || "—") + (o.shipDate ? ' ／ 発送日：' + escapeHtml(o.shipDate) : '') + '</div>');
+        if (o.tracking) lines.push('<div>追跡番号：' + escapeHtml(o.tracking) + '</div>');
+        if (o.memo) lines.push('<div>備考：' + escapeHtml(o.memo) + '</div>');
+
+        card.innerHTML =
+          '<div class="order-head">' +
+            '<span class="o-customer">' + escapeHtml(o.customer || "(顧客名なし)") + ' 様</span>' +
+            '<span class="o-no">No. ' + escapeHtml(o.orderNo || "—") + '</span>' +
+          '</div>' +
+          '<div class="badges">' +
+            '<span class="badge status">' + escapeHtml(o.status) + '</span>' +
+            '<span class="badge ' + payClass(o.payStatus) + '">' + escapeHtml(o.payStatus) + '</span>' +
+            shipBadge +
+          '</div>' +
+          '<div class="order-body">' + lines.join("") + '</div>';
+
+        var actions = document.createElement("div");
+        actions.className = "order-actions";
+        var editBtn = document.createElement("button");
+        editBtn.className = "sub"; editBtn.textContent = "編集";
+        editBtn.onclick = function(){ startEdit(o.id); };
+        var delBtn = document.createElement("button");
+        delBtn.className = "danger"; delBtn.textContent = "削除";
+        delBtn.onclick = function(){ removeOrder(o.id); };
+        actions.appendChild(editBtn);
+        actions.appendChild(delBtn);
+        card.appendChild(actions);
+
+        box.appendChild(card);
+      });
+    }
+
+    function collect(){
+      return {
+        orderNo: val("orderNo"),
+        orderDate: val("orderDate"),
+        customer: val("customer"),
+        product: val("product"),
+        size: val("size"),
+        fabric: val("fabric"),
+        price: val("price"),
+        payStatus: $("payStatus").value,
+        status: $("status").value,
+        shipPlan: val("shipPlan"),
+        shipDate: val("shipDate"),
+        tracking: val("tracking"),
+        memo: val("memo")
+      };
+    }
+
+    function saveCurrent(){
+      var data = collect();
+      if (!data.customer){ alert("顧客名を入力してください。"); return; }
+      var list = loadOrders();
+      if (editId){
+        for (var i=0;i<list.length;i++){
+          if (list[i].id === editId){
+            data.id = editId;
+            data.createdAt = list[i].createdAt;
+            list[i] = data;
+            break;
+          }
+        }
+      } else {
+        data.id = "o" + Date.now() + Math.floor(Math.random()*1000);
+        data.createdAt = new Date().toISOString();
+        list.push(data);
+      }
+      saveOrders(list);
+      resetForm();
+      render();
+    }
+
+    function startEdit(id){
+      var list = loadOrders();
+      var o = null;
+      for (var i=0;i<list.length;i++){ if (list[i].id === id){ o = list[i]; break; } }
+      if (!o) return;
+      editId = id;
+      $("orderNo").value = o.orderNo || "";
+      $("orderDate").value = o.orderDate || "";
+      $("customer").value = o.customer || "";
+      $("product").value = o.product || "";
+      $("size").value = o.size || "";
+      $("fabric").value = o.fabric || "";
+      $("price").value = o.price || "";
+      $("payStatus").value = o.payStatus || "未入金";
+      $("status").value = o.status || STATUSES[0];
+      $("shipPlan").value = o.shipPlan || "";
+      $("shipDate").value = o.shipDate || "";
+      $("tracking").value = o.tracking || "";
+      $("memo").value = o.memo || "";
+      $("formTitle").textContent = "注文の編集（No. " + (o.orderNo || "—") + "）";
+      $("saveBtn").textContent = "変更を保存";
+      $("cancelBtn").style.display = "";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function removeOrder(id){
+      var list = loadOrders();
+      var o = null;
+      for (var i=0;i<list.length;i++){ if (list[i].id === id){ o = list[i]; break; } }
+      if (!confirm("「" + (o ? o.customer + " 様 / " + (o.orderNo||"") : "") + "」の注文を削除しますか？")) return;
+      list = list.filter(function(x){ return x.id !== id; });
+      saveOrders(list);
+      if (editId === id) resetForm();
+      render();
+    }
+
+    function resetForm(){
+      fields.forEach(function(id){
+        var el = $(id);
+        if (el.tagName === "SELECT") el.selectedIndex = 0;
+        else el.value = "";
+      });
+      $("orderDate").value = todayStr();
+      editId = null;
+      $("formTitle").textContent = "注文の入力";
+      $("saveBtn").textContent = "注文を登録";
+      $("cancelBtn").style.display = "none";
+    }
+
+    // CSV
+    function csvCell(v){
+      var s = String(v == null ? "" : v);
+      if (/[",\r\n]/.test(s)) s = '"' + s.replace(/"/g,'""') + '"';
+      return s;
+    }
+    function exportCsv(){
+      var list = sortOrders(loadOrders());
+      if (list.length === 0){ alert("登録された注文がありません。"); return; }
+      var headers = ["注文番号","注文日","顧客名","商品名","サイズ","生地","価格","支払い状況","制作ステータス","発送予定日","発送日","追跡番号","備考"];
+      var rows = list.map(function(o){
+        return [o.orderNo,o.orderDate,o.customer,o.product,o.size,o.fabric,o.price,o.payStatus,o.status,o.shipPlan,o.shipDate,o.tracking,o.memo].map(csvCell).join(",");
+      });
+      var csv = headers.map(csvCell).join(",") + "\r\n" + rows.join("\r\n");
+      var blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "watagumo_juchu_" + todayStr().replace(/-/g,"") + ".csv";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // イベント
+    $("saveBtn").addEventListener("click", saveCurrent);
+    $("clearBtn").addEventListener("click", function(){ if (confirm("入力内容をクリアしますか？")) resetForm(); });
+    $("cancelBtn").addEventListener("click", function(){ resetForm(); });
+    $("csvBtn").addEventListener("click", exportCsv);
+    $("search").addEventListener("input", render);
+    $("filterStatus").addEventListener("change", render);
+
+    // 初期表示
+    $("orderDate").value = todayStr();
+    render();
+  </script>
+</body>
+</html>
